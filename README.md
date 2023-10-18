@@ -2,7 +2,7 @@
 ## Overview
 This repository contains code for fitting AR models to estimate timescales and for generating the figures for the following paper:
 
-Trepka et al. (2023) Training-dependent gradients of timescales of neural dynamics in the primate prefrontal cortex and their contributions to working memory. The Journal of Neuroscience. 
+Trepka et al. (2023) *Training-dependent gradients of timescales of neural dynamics in the primate prefrontal cortex and their contributions to working memory.* The Journal of Neuroscience. 
 ## Data format
 We include intermediate data files in the `data/plot_input` directory that can be used for replicating most figures in the paper. The intermediate files contain tables of neurons along with model parameters estimated for each neuron. 
 ## Reproducing figures
@@ -17,6 +17,5 @@ The remaining scripts in the main directory are organized as follows:
 * postprocess/ contains functions for postprocessing the model output
 * plot/ contains helper functions for plotting figures
 * decoder/ contains functions for training and testing decoders
-* revision_first/ contains functions related to additional analyses associated with the first round of revisions of the paper 
-* revision_second/contains functions related to additional analyses associated with the second round of revisions of the paper 
+* revisions/ contains functions related to additional analyses associated with the revisions of the paper
 
