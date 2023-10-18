@@ -11,12 +11,12 @@ To reproduce all figures, clone the repo and run `make_figures.m` and `plot_corr
 To reproduce all analyses from raw data, run the analysis scripts in the order illustrated in `run_all.m`.
 ## Code organization 
 The remaining scripts in the main directory are organized as follows:
-*config.m contains constants and parmeters for model fitting and postprocessing data
-*preprocess/ contains functions for preprocessing the raw data
-*model/ contains functions for fitting the AR model
-*postprocess/ contains functions for postprocessing the model output
-*plot/ contains helper functions for plotting figures
-*decoder/ contains functions for training and testing decoders
-*revision_first/ contains functions related to additional analyses associated with the first round of revisions of the paper 
-*revision_second/contains functions related to additional analyses associated with the second round of revisions of the paper 
+* config.m contains constants and parameters for model fitting and postprocessing data
+* preprocess/ contains functions for preprocessing the raw data
+* model/ contains functions for fitting the AR model
+* postprocess/ contains functions for postprocessing the model output
+* plot/ contains helper functions for plotting figures
+* decoder/ contains functions for training and testing decoders
+* revision_first/ contains functions related to additional analyses associated with the first round of revisions of the paper 
+* revision_second/contains functions related to additional analyses associated with the second round of revisions of the paper 
 
