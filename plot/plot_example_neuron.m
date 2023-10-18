@@ -1,0 +1,357 @@
+%%% First we plot the firing rate trace for the neuron
+flag = config;
+
+load(flag.post_plot_input);
+address ="elv194_1_5118"; 
+nt_single = nt(nt{:, "address"} == address, :);
+trial_idx = 59; 
+
+load_raw = false;
+if load_raw
+load(flag.post_model_input + address + ".mat");
+
+data = MyData.sorted;
+
+spikes = data.TS(data.TS > data.Cue_onT(trial_idx-1)+2 & data.TS < data.Sample_onT(trial_idx) + 2);
+fix_onset= data.Cue_onT(trial_idx-1:trial_idx)-1;
+cue_onset= data.Cue_onT(trial_idx-1:trial_idx);
+sample_onset = data.Sample_onT(trial_idx-1:trial_idx);
+target_onset = data.Sample_onT(trial_idx-1:trial_idx)+2;
+
+edges = data.Cue_onT(trial_idx-1)+2:.001:data.Sample_onT(trial_idx)+2;
+save("./data/plot_cache/example_neuron.mat", "spikes", "fix_onset", "cue_onset", "sample_onset", "target_onset", "edges");
+else
+load("./data/plot_cache/example_neuron.mat");
+end
+
+
+[binned] = discretize(spikes, edges);
+binned_spikes = zeros(size(edges));
+for bin = binned
+    if ~isnan(bin)
+        binned_spikes(bin) = binned_spikes(bin)+1;
+    end
+end
+
+edges1 = edges < target_onset(1);
+edges2 = edges > fix_onset(2);
+
+signal = smoothdata(binned_spikes,"gaussian", 1000);
+figure;
+
+diff = fix_onset(2) - target_onset(1) - 0.85; %4.5;
+for spike = spikes
+    if spike < target_onset(1) || spike > fix_onset(2)
+    if spike > fix_onset(2)
+        spike = spike - diff;
+    end
+    plot([spike, spike], [max(signal) + max(signal)/10, max(signal) + max(signal)/4], 'k', 'linewidth', .5);
+    hold on;
+    end
+end
+
+int_color = [246, 70, 64]./255;
+sea_color = [0, 167, 255]./255;
+bin_idx = 3900;
+e1 = edges(edges1);
+s1 = signal(edges1);
+e2 = edges(edges2)-diff;
+s2 = signal(edges2);
+plot(e1, s1, 'k', 'linewidth', 2);
+plot([e1(end), e2(1)], [s1(end), s2(1)], 'k-.', 'linewidth', 2);
+plot(e2, s2, 'k', 'linewidth', 2);
+scatter(e2(bin_idx), s2(bin_idx), 800, '.', 'MarkerFaceColor', int_color, 'MarkerEdgeColor', int_color);
+%ha = area([e2(bin_idx-500) e2(bin_idx)], [max(signal) + max(signal)/20 max(signal) + max(signal)/20], 'FaceColor', int_color, 'EdgeColor', int_color, 'FaceAlpha', .3, 'EdgeAlpha', .3);
+%ha = area([e1(bin_idx-250-3000) e1(bin_idx-3000)], [max(signal) + max(signal)/20 max(signal) + max(signal)/20], 'FaceColor', sea_color, 'EdgeColor', sea_color, 'FaceAlpha', .3, 'EdgeAlpha', .3);
+    
+ticks = [];
+tick_labels = [];
+for i = 1:2
+    if i == 2
+        diff = fix_onset(2) - target_onset(1) - 0.85;
+    else
+        diff = 0;
+    end
+    ticks = [ticks; fix_onset(i)-diff];
+    tick_labels = [tick_labels; "fix on"];
+    ticks = [ticks; cue_onset(i)-diff];
+    tick_labels = [tick_labels; "cue on"];
+    ticks = [ticks; cue_onset(i)+.5-diff];
+    tick_labels = [tick_labels; "cue off"];
+    ticks = [ticks; sample_onset(i)-diff];
+    tick_labels = [tick_labels; "sample on"];    
+    ticks = [ticks; sample_onset(i)+.5-diff];
+    tick_labels = [tick_labels; "sample off"]; 
+    ticks = [ticks; target_onset(i)-diff];
+    tick_labels = [tick_labels; "target on"];   
+end
+xticks(ticks);
+xticklabels(tick_labels);
+set(gcf, 'position', [488.  509.  734.  253.])
+set_axis_defaults();
+
+out_color = "#AF7A6D";
+
+% %%% Next we plot how we encode cue and sample 
+num_to_coord = {};
+num_to_coord{1} = [3, 2];
+num_to_coord{2} = [3, 3];
+num_to_coord{3} = [2, 3];
+num_to_coord{4} = [1, 3];
+num_to_coord{5} = [1, 2];
+num_to_coord{6} = [1, 1];
+num_to_coord{7} = [2, 1];
+num_to_coord{8} = [3, 1];
+num_to_coord{9} = [2, 2];
+
+x = [];
+for i = 1:9
+x = [x; num_to_coord{i}(1)];
+end
+y = [];
+for i = 1:9
+y = [y; num_to_coord{i}(2)];
+end
+
+
+scopes = {nt_single.scope.cue(1:8), nt_single.scope.cue(9:16),...
+          nt_single.scope.sample(1:8), nt_single.scope.sample(9:16)};
+for ii = 1:2
+    profile = nt_single.vars(scopes{ii}) + nt_single.vars(nt_single.scope.("b" + (ii + 1)));
+    profile = [profile, nt_single.vars(nt_single.scope.("b" + (ii + 1)))];
+    map_arr = profile > 0;
+    
+    figure;
+
+    sidx = 15;
+    cmap = redblue(200);
+    %cmap = cmap(sidx:end, :);
+    % limit at 6 
+    profile(profile > 6) = 6;
+    profile(profile < -6) = -6;
+    query_points = profile;
+    max_prof = interp1([-6, 6], [1, size(cmap,1)], query_points);
+    c = round(max_prof);
+    scatter(x, y, 200*ones(size(x)), cmap(c,:), 's', 'linewidth', 2,'MarkerFaceColor','flat');
+    hold on;
+    %scatter(x(~map_arr), y(~map_arr), abs(profile(~map_arr)) * 500, '.', 'MarkerEdgeColor', 'b', 'MarkerFaceColor', 'b');
+    ylim([0.5, 4]);
+    xlim([0.5, 4]);
+    
+    axis off;
+    set_axis_defaults();
+    
+set(gcf, 'position', [   457   614   158   142]);
+end
+
+sample_scopes = {nt_single.scope.sample(1:8), nt_single.scope.sample(9:16)};
+match_scopes = {nt_single.scope.match(1), nt_single.scope.match(2)};
+inter_scopes = {nt_single.scope.samplexmatch(1:7), nt_single.scope.samplexmatch(8:14)};
+bias_scopes = {nt_single.scope.b4, nt_single.scope.b5};
+
+for jj = 1:2
+for ii = 1:2
+    if jj == 1 % match because 0ed out interactions
+        profile = nt_single.vars(sample_scopes{ii}) + nt_single.vars(bias_scopes{ii});
+        profile = [profile, nt_single.vars(bias_scopes{ii})];
+    elseif jj == 2 % nonmatch
+        profile = nt_single.vars(sample_scopes{ii}) + nt_single.vars(bias_scopes{ii}) + nt_single.vars(match_scopes{ii});
+        profile(1:7) = profile(1:7) + nt_single.vars(inter_scopes{ii});
+        x = x(1:8);
+        y = y(1:8);
+    end
+    map_arr = profile > 0;
+    
+    figure;
+    sidx = 15;
+    cmap = redblue(200);
+    %cmap = cmap(sidx:end, :);
+    % limit at 6 
+    profile(profile > 6) = 6;
+    profile(profile < -6) = -6;
+    query_points = profile;
+    max_prof = interp1([-6, 6], [1, size(cmap,1)], query_points);
+    c = round(max_prof);
+    if jj == 1
+        scatter(x, y, 200*ones(size(x)), cmap(c,:), 's','linewidth', 2,'MarkerFaceColor','flat'); hold on;
+        scatter(x, y, 50*ones(size(x)), 'k', 'x','linewidth', 2,'MarkerFaceColor','flat');
+    else
+        scatter(x, y, 200*ones(size(x)), cmap(c,:), 's', 'linewidth', 2,'MarkerFaceColor','flat'); hold on;
+        scatter(x, y, 50*ones(size(x)),'k', 'o','linewidth', 2);
+    end
+    hold on;
+    %scatter(x(~map_arr), y(~map_arr), abs(profile(~map_arr)) * 500, '.', 'MarkerEdgeColor', 'b', 'MarkerFaceColor', 'b');
+    ylim([0, 4]);
+    xlim([0, 4]);
+    
+    axis off;
+    set_axis_defaults();
+    
+set(gcf, 'position', [   457   614   158   142]);
+end
+end
+
+
+figure;
+colorbar
+colormap(cmap)
+clim([-6, 6])
+axis off
+set(gcf, 'position', [457   611   158   145]);
+
+%%% Now we plot the intrinsic and seasonal filters
+intrinsic_vars = nt_single.vars(nt_single.scope.intrinsic);
+seasonal_vars = nt_single.vars(nt_single.scope.seasonal);
+figure;
+x = 50.*(-flag.intrinsic_order:1:-1);
+y = intrinsic_vars;
+plot(x, flip(intrinsic_vars),  'k.-', 'markersize', 20, 'linewidth', 1);
+set_axis_defaults();
+xlim([-500, 0]);
+ylim([0, .11]);
+set(gcf, 'position', [   457   614   158   142]);
+
+figure;
+plot(-1, seasonal_vars,'k.-', 'markersize', 20);
+ylim([0, .25]);
+xlim([-1.5, -0.5]);
+set_axis_defaults();
+set(gcf, 'position', [   457   614   158   142]);
+
+
+%%% Now we plot the intrinsic and seasonal ACFs
+intrinsic_vars = nt_single.intrinsic_acf;
+seasonal_vars = exp(-(2.5:.01:7.5)/nt_single.seasonal_tau);
+figure;
+x = 50.*(-flag.intrinsic_order:1:-1);
+y = intrinsic_vars;
+
+[~, min_pred] = fit_exp_comp(flip(x), intrinsic_vars, "intrinsic");
+
+plot(x, flip(intrinsic_vars),  'k.', 'markersize', 20, 'linewidth', 1); hold on;
+plot(flip(linspace(-50*flag.intrinsic_order, -50, 100)), (min_pred),  'k-', 'markersize', .01, 'linewidth', 1);
+
+set_axis_defaults();
+xlim([-550, 0]);
+set(gcf, 'position', [   457   614   158   142]);
+
+figure;
+plot(-(2.5:.01:7.5), seasonal_vars,'k-', 'markersize', 20, 'linewidth', 1); hold on;
+plot(-5, exp(-(5)/nt_single.seasonal_tau),'k.', 'markersize', 20, 'linewidth', 1);
+xlim([-8, -2]);
+set_axis_defaults();
+set(gcf, 'position', [   457   614   158   142]);
+
+function c = redblue(m)
+%REDBLUE    Shades of red and blue color map
+%   REDBLUE(M), is an M-by-3 matrix that defines a colormap.
+%   The colors begin with bright blue, range through shades of
+%   blue to white, and then through shades of red to bright red.
+%   REDBLUE, by itself, is the same length as the current figure's
+%   colormap. If no figure exists, MATLAB creates one.
+%
+%   For example, to reset the colormap of the current figure:
+%
+%             colormap(redblue)
+%
+%   See also HSV, GRAY, HOT, BONE, COPPER, PINK, FLAG, 
+%   COLORMAP, RGBPLOT.
+%   Adam Auton, 9th October 2009
+if nargin < 1, m = size(get(gcf,'colormap'),1); end
+if (mod(m,2) == 0)
+    % From [0 0 1] to [1 1 1], then [1 1 1] to [1 0 0];
+    m1 = m*0.5;
+    r = (0:m1-1)'/max(m1-1,1);
+    g = r;
+    r = [r; ones(m1,1)];
+    g = [g; flipud(g)];
+    b = flipud(r);
+else
+    % From [0 0 1] to [1 1 1] to [1 0 0];
+    m1 = floor(m*0.5);
+    r = (0:m1-1)'/max(m1,1);
+    g = r;
+    r = [r; ones(m1+1,1)];
+    g = [g; 1; flipud(g)];
+    b = flipud(r);
+end
+c = [r g b]; 
+end
+
+function [min_tau, min_pred] = fit_exp_comp(times, rs, component)
+flag = config();
+
+% reshape and remove nan
+rs = reshape(rs, [], 1);
+times = reshape(times, [], 1);
+remove_idx = isnan(rs) | isnan(times);
+rs(remove_idx) = [];
+times(remove_idx) = [];
+
+par = struct; 
+
+if component == "intrinsic"
+par.int_a_bound = [0, 1];
+par.int_tau_bound = [1e-1, 500];
+par.int_b_bound = [-1, 1];
+par.iters = 5;
+par.int_order = flag.intrinsic_order;
+elseif component == "seasonal"
+par.int_a_bound = [0, 1];
+par.int_tau_bound = [1e-1, 25];
+par.int_b_bound = [-1, 1];
+par.iters = 5;
+par.int_order = flag.seasonal_order;
+end
+
+ min_mse = 1e20;
+ for iii = 1:par.iters
+    c = "int_";
+    abound = par.(c + 'a_bound');
+    bbound = par.(c + 'b_bound');
+    tbound = par.(c + 'tau_bound');
+
+    A_init = unifrnd(abound(1),abound(2));
+    B_init = unifrnd(bbound(1),bbound(2));
+    tau_init = unifrnd(tbound(1), tbound(2));
+    fitted_params = [A_init, B_init, tau_init];
+    while fitted_params(1) == A_init && fitted_params(2) == B_init && fitted_params(3) == tau_init
+        A_init = unifrnd(abound(1),abound(2));
+        B_init = unifrnd(bbound(1),bbound(2));
+        tau_init = unifrnd(tbound(1), tbound(2));
+
+        [fitted_params, ~, ~, ~, ~, ~, jacobian] = lsqnonlin(@(p) exponential_decay_fit(p, times, rs), ...
+                                  [A_init, B_init, tau_init], ...
+                                  [abound(1), bbound(1), tbound(1)], ...
+                                  [abound(2), bbound(2), tbound(2)], optimset('display', 'off'));
+    end
+
+    rs_pred = exponential_decay(fitted_params, times);
+    mse = sum((rs_pred-rs).^2);
+
+    if mse < min_mse
+        min_mse = mse;
+        if component == "intrinsic"
+            min_pred = exponential_decay(fitted_params, flip(linspace(-50*flag.intrinsic_order, -50, 100)));
+
+            rss = sum((rs_pred-rs).^2);
+            tss = sum((rs - mean(rs)).^2);
+            r2 = 1 - rss/tss;
+        elseif component == "seasonal"
+            min_pred = exponential_decay(fitted_params, flip(linspace(-flag.triallen*flag.seasonal_order, -flag.triallen, 100)));
+        end
+        min_tau = fitted_params(3);
+    end
+ end
+end
+
+function y_fit = exponential_decay_fit(params, t, y)
+    y_fit = exponential_decay(params, t) - y;
+end
+
+function y_fit = exponential_decay(params, t)
+    A = params(1);
+    B = params(2);
+    tau = params(3);
+    y_fit = A * exp(t./tau) + B;
+end
